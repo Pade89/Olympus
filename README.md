@@ -1,185 +1,223 @@
-# Olympus — Self-Hosted AI Agent on Azure
+# PAIOS — Personal AI Operating System
 
-A personal project deploying **Hermes** (by Nous Research) onto Microsoft Azure infrastructure — a self-improving, always-on AI agent accessible from anywhere via Telegram.
+**Built by Ade Cobbs · Washington, DC · 2026**
 
-Built as a hands-on Azure learning project aligned with **AZ-104: Microsoft Azure Administrator** certification.
+PAIOS is a self-hosted AI command center built around an Azure VM called **Olympus** and an AI agent named **Hermes**. It automates my job search, manages my AZ-104 study progress, syncs everything to my Obsidian vault, and gives me a voice-controlled Jarvis interface accessible from any device.
 
 ---
 
-## What Is Olympus?
+## 🌐 Live
 
-Olympus is a cloud-deployed AI agent that runs 24/7 on an Azure Virtual Machine. Unlike AI assistants that reset after every session, Hermes uses an **Agentic Reinforcement Learning (RL) pipeline** — it learns, improves, and builds persistent memory over time.
-
-Key capabilities:
-- 75+ built-in skills across research, software development, productivity, and automation
-- Persistent memory across sessions — learns your preferences and context
-- Always online — runs independently of my local machine
-- Accessible via Telegram from anywhere in the world
-- Powered by Trinity Large (free, open-weight model via OpenRouter)
+**War Room (permanent URL):**
+```
+https://olympus-warroom.centralus.cloudapp.azure.com
+```
+Works on desktop, iPhone, and iPad. Add to iPhone home screen: Safari → Share → Add to Home Screen.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Microsoft Azure                    │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │           Resource Group: hermes-rg          │   │
-│  │                                             │   │
-│  │  ┌─────────────────────────────────────┐   │   │
-│  │  │     Virtual Network: hermes-vnet     │   │   │
-│  │  │         (10.0.0.0/16)               │   │   │
-│  │  │                                     │   │   │
-│  │  │  ┌───────────────────────────────┐  │   │   │
-│  │  │  │   Subnet: hermes-subnet       │  │   │   │
-│  │  │  │       (10.0.1.0/24)          │  │   │   │
-│  │  │  │                               │  │   │   │
-│  │  │  │  ┌─────────────────────────┐  │  │   │   │
-│  │  │  │  │  VM: hermes-vm          │  │  │   │   │
-│  │  │  │  │  Ubuntu 24.04 LTS       │  │  │   │   │
-│  │  │  │  │  Standard D2s v3        │  │  │   │   │
-│  │  │  │  │  2 vCPU / 8GB RAM       │  │  │   │   │
-│  │  │  │  │                         │  │  │   │   │
-│  │  │  │  │  ┌───────────────────┐  │  │  │   │   │
-│  │  │  │  │  │  Docker Container  │  │  │  │   │   │
-│  │  │  │  │  │  Hermes Agent      │  │  │  │   │   │
-│  │  │  │  │  │  (nousresearch/    │  │  │  │   │   │
-│  │  │  │  │  │   hermes-agent)    │  │  │  │   │   │
-│  │  │  │  │  └───────────────────┘  │  │  │   │   │
-│  │  │  │  └─────────────────────────┘  │  │   │   │
-│  │  │  └───────────────────────────────┘  │   │   │
-│  │  └─────────────────────────────────────┘   │   │
-│  │                                             │   │
-│  │  NSG: hermes-nsg                            │   │
-│  │  ├── Allow SSH (port 22) — restricted IP    │   │
-│  │  ├── Allow HTTP (port 80)                   │   │
-│  │  └── Allow HTTPS (port 443)                 │   │
-│  └─────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
-         │
-         │ OpenRouter API
-         ▼
-┌─────────────────┐
-│  Trinity Large   │
-│  (free, open     │
-│   weights)       │
-│  via OpenRouter  │
-└─────────────────┘
-         │
-         │ Telegram Gateway
-         ▼
-┌─────────────────┐
-│  Telegram Bot   │
-│  (anywhere,     │
-│   any device)   │
-└─────────────────┘
+Your Devices (iPhone / Mac / iPad)
+         ↓ HTTPS (Let's Encrypt SSL)
+┌─────────────────────────────────────────────┐
+│          Azure VM — hermes-vm               │
+│          Ubuntu 24.04 · D2s v3              │
+│                                             │
+│  nginx (443) ──► olympus_bridge.py (8080)   │
+│                    ├── Advisory Board (OpenRouter LLMs)
+│                    ├── ElevenLabs TTS       │
+│                    ├── OpenAI Realtime      │
+│                    ├── Tool Registry        │
+│                    ├── Long-term Memory     │
+│                    └── Tier 1 Self-building │
+│                                             │
+│  job_hunter.py  (cron 8am)                  │
+│  job_applier.py (cron 9am)                  │
+│  hermes_scanner.py (cron hourly + 7am)      │
+└─────────────────────────────────────────────┘
+         ↕ cloudflared tunnel
+┌─────────────────────────────────────────────┐
+│              Mac (launchd)                  │
+│  obsidian_receiver.py → iCloud → Obsidian   │
+└─────────────────────────────────────────────┘
 ```
 
 ---
 
-## Azure Infrastructure
+## War Room Features
 
-| Resource | Name | Details |
-|---|---|---|
-| Resource Group | hermes-rg | Central US |
-| Virtual Network | hermes-vnet | 10.0.0.0/16 |
-| Subnet | hermes-subnet | 10.0.1.0/24 |
-| Network Security Group | hermes-nsg | Custom inbound rules |
-| Virtual Machine | hermes-vm | Ubuntu 24.04 LTS, D2s v3 |
-| Public IP | hermes-vm-ip | Static |
-| OS Disk | Premium SSD | 30GB |
+### ⚡ Jarvis — Voice Command Center
+OpenAI Realtime API (gpt-4o-realtime-preview) via WebRTC. Fully hands-free with server-side VAD. Voice: `ash`.
 
-### NSG Rules
+On every activation, Jarvis loads your last 4 Obsidian daily notes **and** long-term memory, then gives a personalized 3-sentence brief covering open tasks, job pipeline, and a specific recommendation.
 
-| Priority | Name | Port | Protocol | Source | Action |
-|---|---|---|---|---|---|
-| 200 | Allow-SSH | 22 | TCP | Admin IP only | Allow |
-| 210 | Allow-HTTP | 80 | TCP | Any | Allow |
-| 220 | Allow-HTTPS | 443 | TCP | Any | Allow |
+On disconnect: auto-summarizes the session and appends it to today's daily note.
 
----
+**16 tools:**
 
-## Tech Stack
-
-| Layer | Technology |
+| Tool | What it does |
 |---|---|
-| Cloud Provider | Microsoft Azure |
-| Compute | Azure Virtual Machine (Ubuntu 24.04 LTS) |
-| Containerization | Docker + Docker Compose |
-| AI Agent | Hermes by Nous Research |
-| LLM | Trinity Large Preview (free) via OpenRouter |
-| Messaging | Telegram Bot API |
-| Authentication | SSH key pair (RSA) |
-| Monitoring | Azure Boot Diagnostics |
+| `get_status` | VM health, disk, memory |
+| `get_jobs` | Today's job leads + pipeline stats |
+| `save_note` | Creates note in Obsidian Inbox/ |
+| `append_daily` | Appends to today's daily note |
+| `search_vault` | Full-text search across vault |
+| `read_note` | Reads specific note by path |
+| `log_study` | AZ-104 study tracker with start/end duration |
+| `web_search` | Tavily real-time web search |
+| `get_file_context` | Reads uploaded file by name/query |
+| `route_to_board` | Routes to board persona in their ElevenLabs voice |
+| `run_code` | Executes Python, bash, or **Claude Code CLI** on the VM |
+| `read_vm_file` | Reads any file under /opt/olympus/ |
+| `write_vm_file` | Writes/appends to any file under /opt/olympus/ |
+| `list_vm_files` | Lists directory under /opt/olympus/ |
+| `deploy_self` | Restarts olympus-bridge (hot reload) |
+| `get_memory` | Retrieves all facts from long-term memory |
 
 ---
 
-## AZ-104 Concepts Covered
+### 🧠 Long-term Memory
+Hermes persists facts across sessions in `/opt/olympus/hermes_memory.json`. Memory is auto-injected into every system prompt and Jarvis opening brief. Just say *"remember that..."* in any chat or voice session.
 
-This project was built as a practical application of AZ-104 exam objectives:
-
-**Manage Azure identities and governance**
-- Resource Groups — organizing related resources
-- Azure subscription management
-
-**Implement and manage storage**
-- OS disk management (Premium SSD LRS)
-- Azure Boot Diagnostics with managed storage
-
-**Deploy and manage Azure compute resources**
-- Virtual Machine deployment (IaaS)
-- VM sizing and configuration
-- Ubuntu Linux on Azure
-- SSH key pair authentication
-
-**Implement and manage virtual networking**
-- Virtual Network creation and configuration
-- Subnet design and CIDR notation (10.0.0.0/16, 10.0.1.0/24)
-- Network Security Groups
-- Inbound security rules (priority, protocol, port, source)
-- Static Public IP addresses
-- NIC configuration and attachment
-
-**Monitor and maintain Azure resources**
-- Azure Boot Diagnostics
-- Azure Monitor configuration
-- VM restart and maintenance
+```
+remember(key, value) → writes to hermes_memory.json
+recall(key | "all")  → reads back
+forget(key)          → removes a key
+```
 
 ---
 
-## Why This Project
+### 🤖 Claude Code Integration
+`run_code` supports `lang: "claude"` — Hermes can delegate complex coding tasks to the Claude Code CLI running on the VM. Background mode (`background: true`) fires the task async and returns a job ID; poll `GET /api/jobs/<id>` for the result.
 
-I'm pursuing the **AZ-104 Azure Administrator** certification while transitioning into remote IT consulting. Rather than study purely through labs and textbooks, I built real infrastructure I actually use daily.
-
-The result: a cloud-deployed AI agent that runs 24/7, costs near-zero to operate (free-tier VM + free LLM), and gave me hands-on experience with every major networking and compute concept on the AZ-104 exam.
-
-This is part of a larger personal infrastructure project — **PAIOS (Personal AI Operating System)** — combining local and cloud AI agents to support remote work, research, and automation.
-
----
-
-## Related Projects
-
-- **[ClaudeClaw / PAIOS](#)** — Local multi-agent AI command center with War Room voice interface
+```json
+{"lang": "claude", "code": "Add a new endpoint to olympus_bridge.py that...", "background": true}
+```
 
 ---
 
-## Status
+### 🎙️ Advisory Board
+5-member AI board with distinct ElevenLabs voices. Smart routing picks the 1-3 most relevant personas per message.
 
-- [x] Azure infrastructure deployed
-- [x] Docker + Hermes running on VM
-- [x] OpenRouter + Trinity model configured
-- [x] SSH access and security hardened
-- [ ] Telegram gateway connected (in progress)
-- [ ] Persistent gateway service (systemd)
-- [ ] Azure Monitor alerts configured
-- [ ] Resize to B2s when available in region
+| Persona | Voice | Expertise |
+|---|---|---|
+| Hermes | Adam | Command AI, logistics, job pipeline |
+| The General | Drew | Career strategy, competitive positioning |
+| The Recruiter | Rachel | Resumes, ATS, interviews, callbacks |
+| The Architect | Josh | Azure, AZ-104, M365, cloud infra |
+| The Coach | Matilda | Mindset, habits, accountability |
+
+Modes: Smart routing · Full Board (all 5) · Hands-free VAD
 
 ---
 
-## Author
+### 🎬 Weekly Board Meeting
+One button, structured 5-agenda meeting. Live pipeline data fetched. All 5 personas speak in their own voice. Full transcript saved to Obsidian daily note.
 
-**Ade Cobbs** — IT Professional | Azure enthusiast | Building in public
+---
 
-Washington DC | [GitHub](https://github.com/Pade89) | [LinkedIn](#) | [Upwork](#)
+### 🎯 Interview Prep
+Enter a role. The Recruiter asks 5 tailored questions, gives real-time feedback after each, and delivers a 3-part final eval (strongest moment, biggest gap, one drill). Saved to Obsidian `Interview Prep/`.
+
+---
+
+### 📊 Pipeline Dashboard
+Live view of `applications.json` — totals, success rate, platform breakdown (LinkedIn/Indeed/remote), full filterable table.
+
+---
+
+### 💬 Chat — Tool Registry
+Every `/chat` request runs against a real tool execution loop. The LLM can call registered tools (web search, file context, memory, etc.), get results, and loop up to 5 rounds before returning a final answer. Tool pills appear in the UI showing what was called.
+
+---
+
+## Job Automation
+
+| Time | Script | Does |
+|---|---|---|
+| 8:00 AM | `job_hunter.py` | Scrapes Remotive, RemoteOK, Arbeitnow. Scores jobs against my profile (Azure/M365/IT). Generates cover letters. Saves `jobs_today.json`. |
+| 9:00 AM | `job_applier.py` | Auto-applies to jobs scoring ≥60 via Playwright. LinkedIn Easy Apply, Indeed Easy Apply, generic forms. Max 10/day. Logs to `applications.json`. |
+
+---
+
+## Gmail / Telegram Scanner
+
+```
+cron (hourly) → hermes_scanner.py → gmail_scanner.py → telegram_sender.py → @OlympusBot
+```
+
+Alerts for: interview invites, job offers, rejections, recruiter outreach, follow-up reminders, 7am morning brief.
+
+---
+
+## Obsidian Vault Sync
+
+- **Vault:** "Ade's Brain" — iCloud synced
+- No Obsidian plugin required — direct filesystem write via `obsidian_receiver.py`
+- Cloudflared tunnel (Mac) → auto-URL-sync on restart
+
+What lands automatically:
+- Jarvis voice notes → `Inbox/`
+- Session summaries → daily note `## Jarvis Session`
+- Study logs → daily note `## AZ-104 Study`
+- Board meeting transcripts → daily note `## Weekly Board Meeting`
+- Interview sessions → `Interview Prep/`
+
+---
+
+## Tier 1 Self-Building
+
+Hermes can read, edit, and restart its own code:
+
+```
+read_vm_file  → inspect olympus_bridge.py
+write_vm_file → patch it
+deploy_self   → restart bridge → new code is live
+```
+
+All file ops restricted to `/opt/olympus/` via `os.path.realpath()`.
+
+---
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| VM | Azure Standard D2s v3 · Ubuntu 24.04 |
+| Web server | nginx + Let's Encrypt SSL |
+| Bridge API | Python HTTPServer (port 8080) |
+| LLM (chat/board) | OpenRouter → LLaMA 3.3 70b (default) / Nous Hermes 3 405b |
+| LLM (code) | Claude Code CLI (`@anthropic-ai/claude-code`) |
+| Voice | OpenAI Realtime API (gpt-4o-realtime-preview) via WebRTC |
+| TTS | ElevenLabs eleven_turbo_v2_5 |
+| Web search | Tavily (1000 queries/month) |
+| Job scraping | Remotive · RemoteOK · Arbeitnow · LinkedIn |
+| Browser automation | Playwright + Chromium |
+| Notes | Obsidian "Ade's Brain" via iCloud |
+| Mac services | launchd |
+
+---
+
+## Deploy
+
+```zsh
+# Deploy bridge + War Room to VM (~15 seconds)
+zsh ~/Documents/Claude/Projects/Olympus/deploy_warroom.sh
+
+# SSH into VM
+ssh olympus
+```
+
+---
+
+## Roadmap
+
+- [ ] Google Calendar — track interviews, study sessions in morning brief
+- [ ] Anki flashcard generator from AZ-104 study notes
+- [ ] Telegram → Jarvis two-way (reply to trigger actions remotely)
+- [ ] Named Cloudflare tunnel for permanent vault URL
+- [ ] GitHub PAT on VM — Hermes can push commits
+- [ ] Vercel auto-deploy — chat-to-production pipeline
+- [ ] Dev Mode model routing — Claude Opus for heavy code tasks
